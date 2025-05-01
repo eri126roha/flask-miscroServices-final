@@ -1,0 +1,166 @@
+version: '3.8'
+
+services:
+  # ──────────────────────────────────────────────────────────────────────────
+  # Zookeeper (Confluent)
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    container_name: zookeeper
+    ports:
+      - "2181:2181"
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    networks:
+      - backend
+
+  # Kafka (Confluent)
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: kafka
+    ports:
+      - "9092:9092"
+      - "29092:29092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,PLAINTEXT_INTERNAL://0.0.0.0:29092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092,PLAINTEXT_INTERNAL://kafka:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_INTERNAL:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT_INTERNAL
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-topics --bootstrap-server kafka:29092 --list"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    depends_on:
+      - zookeeper
+    networks:
+      - backend
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # Reservation DB
+  reservationdb:
+    image: postgres:15
+    container_name: reservationdb
+    restart: always
+    environment:
+      POSTGRES_USER: reservation
+      POSTGRES_PASSWORD: reservation
+      POSTGRES_DB: reservationDb
+    ports:
+      - "5451:5432"
+    networks:
+      - backend
+
+  # Reservation Service
+  reservation:
+    image: oumayoungbuin/reservation_project:reservation
+    container_name: reservation-service
+    restart: on-failure
+    depends_on:
+      reservationdb:
+        condition: service_started
+      kafka:
+        condition: service_healthy
+      salle:
+        condition: service_started
+    environment:
+      - SQLALCHEMY_DATABASE_URI=postgresql://reservation:reservation@reservationdb:5432/reservationDb
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+    ports:
+      - "5001:5000"
+    networks:
+      - backend
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # User DB
+  userDb:
+    image: postgres:15
+    container_name: userdb
+    restart: always
+    environment:
+      POSTGRES_USER: ouma
+      POSTGRES_PASSWORD: passwordouma
+      POSTGRES_DB: user
+    ports:
+      - "5453:5432"
+    networks:
+      - backend
+
+  # User Service
+  user:
+    image: oumayoungbuin/reservation_project:user
+    container_name: user-service
+    restart: on-failure
+    depends_on:
+      userDb:
+        condition: service_started
+    environment:
+      - SQLALCHEMY_DATABASE_URI=postgresql://ouma:passwordouma@userDb:5432/user
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+    ports:
+      - "5002:5000"
+    networks:
+      - backend
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # Salle DB
+  salleDb:
+    image: postgres:latest
+    container_name: postgres_salle
+    restart: always
+    environment:
+      POSTGRES_DB: salle
+      POSTGRES_USER: ouma
+      POSTGRES_PASSWORD: passwordouma
+    ports:
+      - "5452:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ouma -d salle"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - backend
+
+  # Salle Service
+  salle:
+    image: oumayoungbuin/reservation_project:salle
+    container_name: salle-service
+    restart: on-failure
+    depends_on:
+      salleDb:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    environment:
+      - SQLALCHEMY_DATABASE_URI=postgresql://ouma:passwordouma@salleDb:5432/salle
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+    ports:
+      - "5003:5000"
+    networks:
+      - backend
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # API Gateway
+  gateway:
+    image: oumayoungbuin/reservation_project:gatway
+    container_name: gateway-service
+    restart: on-failure
+    depends_on:
+      user:
+        condition: service_started
+      reservation:
+        condition: service_started
+      salle:
+        condition: service_started
+    ports:
+      - "8000:5000"
+    networks:
+      - backend
+
+networks:
+  backend:
+    driver: bridge
