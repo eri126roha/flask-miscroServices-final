@@ -1,0 +1,27 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: reservation
+  labels:
+    app: reservation
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: reservation
+  template:
+    metadata:
+      labels:
+        app: reservation
+    spec:
+      containers:
+      - name: reservation
+        image: oumayoungbuin/reservation_project:reservation
+        ports:
+        - containerPort: 5000
+        env:
+        - name: SQLALCHEMY_DATABASE_URI
+          value: "postgresql://reservation:reservation@reservationdb:5432/reservationDb"
+        - name: KAFKA_BOOTSTRAP_SERVERS
+          value: "kafka:29092"
+

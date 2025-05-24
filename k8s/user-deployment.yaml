@@ -1,0 +1,26 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: user
+  labels:
+    app: user
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: user
+  template:
+    metadata:
+      labels:
+        app: user
+    spec:
+      containers:
+      - name: user
+        image: oumayoungbuin/reservation_project:user
+        ports:
+        - containerPort: 5000
+        env:
+        - name: SQLALCHEMY_DATABASE_URI
+          value: "postgresql://ouma:passwordouma@userdb:5432/user"
+        - name: KAFKA_BOOTSTRAP_SERVERS
+          value: "kafka:29092"

@@ -1,0 +1,27 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: salle
+  labels:
+    app: salle
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: salle
+  template:
+    metadata:
+      labels:
+        app: salle
+    spec:
+      containers:
+      - name: salle
+        image: oumayoungbuin/reservation_project:salle
+        ports:
+        - containerPort: 5000
+        env:
+        - name: SQLALCHEMY_DATABASE_URI
+          value: "postgresql://ouma:passwordouma@salldb:5432/salle"
+        - name: KAFKA_BOOTSTRAP_SERVERS
+          value: "kafka:29092"
+

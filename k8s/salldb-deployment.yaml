@@ -1,0 +1,28 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: salldb
+  labels:
+    app: salldb
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: salldb
+  template:
+    metadata:
+      labels:
+        app: salldb
+    spec:
+      containers:
+      - name: salldb
+        image: postgres:latest
+        ports:
+        - containerPort: 5432
+        env:
+        - name: POSTGRES_DB
+          value: "salle"
+        - name: POSTGRES_USER
+          value: "ouma"
+        - name: POSTGRES_PASSWORD
+          value: "passwordouma"

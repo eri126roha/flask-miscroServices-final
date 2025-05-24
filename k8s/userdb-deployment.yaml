@@ -1,0 +1,28 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: userdb
+  labels:
+    app: userdb
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: userdb
+  template:
+    metadata:
+      labels:
+        app: userdb
+    spec:
+      containers:
+      - name: userdb
+        image: postgres:15
+        ports:
+        - containerPort: 5432
+        env:
+        - name: POSTGRES_USER
+          value: "ouma"
+        - name: POSTGRES_PASSWORD
+          value: "passwordouma"
+        - name: POSTGRES_DB
+          value: "user"
